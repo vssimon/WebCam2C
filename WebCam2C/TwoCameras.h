@@ -33,6 +33,9 @@ private:
 	VideoCapture m_videoCapture0;
 	VideoCapture m_videoCapture1;
 
+	Scalar m_colorIzquierdo = Scalar(0, 0, 255);
+	Scalar m_colorDerecho = Scalar(255, 255, 0);
+
 	 //http://acodigo.blogspot.com/2013/06/acceso-la-webcam.html
 
 	Mat m_oriImage0;

@@ -85,6 +85,8 @@ int main()
 		printf("\t- I,i : Intercambia las cámaras.\n");
 		printf("\t- F,f : Toma una foto y la guarda en un fichero.\n");
 		printf("\t- C,c : Centra la imágenes, a la posición inicial.\n");
+		printf("\t- P,p : Intercambia el color de filtro de cada ojo. No equivale a I, porque I influye en la perspectiva.\n");
+		printf("\t- K,k : Cambia los colores primarios de Rxx-xGB a xGx-RxB y viceversa.\n");
 		printf("\t- Flechas izquierda, derecha, arriba y abajo : Mueven la imagen de la cámara derecha a izquierda, derecha, arriba y abajo; respectivamente.\n");
 		printf("\t- AvPag y RePag : Rotan la imagen de la cámara de la derecha.\n");
 		printf("\tEstas funcionalidades sirven para calibrar por software la alineación de las cámaras.\n");

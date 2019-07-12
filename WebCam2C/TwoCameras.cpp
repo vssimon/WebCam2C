@@ -101,11 +101,11 @@ bool TwoCameras::Init(int c1, int c2)
 		res = true;
 		m_videoCapture0.read(m_oriImage0);
 		m_mskImage0 = m_oriImage0.clone();
-		m_mskImage0.setTo(Scalar(0, 0, 255));
+		m_mskImage0.setTo(m_colorIzquierdo);
 
 		m_videoCapture1.read(m_oriImage1);
 		m_mskImage1 = m_oriImage1.clone();
-		m_mskImage1.setTo(Scalar(255, 255, 0));
+		m_mskImage1.setTo(m_colorDerecho);
 
 		m_dstImage1b = m_oriImage1.clone();
 		m_dstImage1b.setTo(Scalar(0, 0, 0));
@@ -160,6 +160,9 @@ void TwoCameras::ShowImages()
 	bool showCam0 = true;
 	bool showCam1 = true;
 	bool showRes = true;
+	// Colores de filtro
+	bool primario = true;
+	bool natural = true;
 
 	vector<int> compression_params;
 	compression_params.push_back(cv::IMWRITE_PNG_COMPRESSION);
@@ -279,30 +282,68 @@ void TwoCameras::ShowImages()
 		int key = waitKeyEx(1);
 		switch (key)
 		{
-		// Esc
+			// Esc
 		case 0x1B:
 			continuar = false;
 			break;
-		// I
+			// I
 		case (int)'i':
 		case (int)'I':
 			ordenImagen = !ordenImagen;
 			break;
-		// F
+			// F
 		case (int)'f':
 		case (int)'F':
 			char nomfichero[MAX_PATH];
 			snprintf(nomfichero, MAX_PATH, "%sAnaglifo%d.png", SAVEPATH.c_str(), m_idImage++);
 			imwrite(nomfichero, m_imgAnaglifo, compression_params);
 			break;
-		// c
+			// C
 		case (int)'c':
 		case (int)'C':
 			m_xpos = 0;
 			m_ypos = 0;
 			m_angulo = 0;
 			break;
+			// P, K
+		case (int)'p':
+		case (int)'P':
+		case (int)'k':
+		case (int)'K':
+			if( key==(int)'p' || key == (int)'P')
+				primario = !primario;
+			if (key == (int)'k' || key == (int)'K')
+				natural = !natural;
 
+			if (primario)
+			{
+				if (natural)
+				{
+					m_colorIzquierdo = Scalar(0, 0, 255);
+					m_colorDerecho = Scalar(255, 255, 0);
+				}
+				else
+				{
+					m_colorIzquierdo = Scalar(0, 255, 0);
+					m_colorDerecho = Scalar(255, 0, 255);
+				}
+			}
+			else
+			{
+				if (natural)
+				{
+					m_colorIzquierdo = Scalar(255, 255, 0);
+					m_colorDerecho = Scalar(0, 0, 255); 
+				}
+				else
+				{
+					m_colorIzquierdo = Scalar(255, 0, 255);
+					m_colorDerecho = Scalar(0, 255, 0); 
+				}
+			}
+			m_mskImage0.setTo(m_colorIzquierdo);
+			m_mskImage1.setTo(m_colorDerecho);
+			break;
 			// Muestra/Oculta cámara 0
 		case (int)0x700000:
 			showCam0 = !showCam0;
