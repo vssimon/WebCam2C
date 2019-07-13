@@ -21,6 +21,7 @@ private:
 	const string m_frame1 = "frame1";
 	const string m_frame2 = "frame2";
 	const string SAVEPATH = ".\\Images\\";
+	const float FPS = 30.0;
 
 	int m_xpos = 0;
 	int m_ypos = 0;
@@ -32,6 +33,8 @@ private:
 
 	VideoCapture m_videoCapture0;
 	VideoCapture m_videoCapture1;
+
+	VideoWriter m_videoWriter;
 
 	Scalar m_colorIzquierdo = Scalar(0, 0, 255);
 	Scalar m_colorDerecho = Scalar(255, 255, 0);
@@ -50,8 +53,6 @@ private:
 	Mat m_imgAnaglifo;
 
 	Mat m_rotacion;
-
-	int m_idImage = 0;
 
 	void CamSettings();
 

@@ -1,6 +1,7 @@
 #include "TwoCameras.h"
 #include <direct.h>
 #include <dshow.h>
+#include <time.h>
 
 #pragma comment(lib, "strmiids")
 
@@ -140,6 +141,12 @@ bool TwoCameras::Init(int c1, int c2)
 
 void TwoCameras::CamSettings()
 {
+// https://stackoverflow.com/questions/9191597/disable-auto-focus-in-video-input-library-or-opencv
+	// Camara 0
+	m_videoCapture0.set(cv::CAP_PROP_AUTOFOCUS, 1);
+
+	// Camara 1
+	m_videoCapture1.set(cv::CAP_PROP_AUTOFOCUS, 1);
 };
 
 void TwoCameras::ShowImages()
@@ -262,6 +269,12 @@ void TwoCameras::ShowImages()
 			m_dstImage1c,
 			m_imgAnaglifo);
 
+		// Video result
+		if (m_videoWriter.isOpened())
+		{
+			m_videoWriter.write(m_imgAnaglifo);
+		}
+
 		// Result
 		if (showRes)
 		{
@@ -279,7 +292,7 @@ void TwoCameras::ShowImages()
 			}
 		}
 
-		int key = waitKeyEx(1);
+		int key = waitKeyEx((int)(1000/FPS));
 		switch (key)
 		{
 			// Esc
@@ -294,11 +307,50 @@ void TwoCameras::ShowImages()
 			// F
 		case (int)'f':
 		case (int)'F':
-			char nomfichero[MAX_PATH];
-			snprintf(nomfichero, MAX_PATH, "%sAnaglifo%d.png", SAVEPATH.c_str(), m_idImage++);
-			imwrite(nomfichero, m_imgAnaglifo, compression_params);
+			{
+				char nomfichero[MAX_PATH];
+				// Fecha y hora actual
+				time_t now = time(0);
+				struct tm newtime;
+				localtime_s(&newtime, &now);
+				snprintf(nomfichero, MAX_PATH, "%sImgAnaglifo_%04d%02d%02d_%02d%02d%02d.png",
+					SAVEPATH.c_str(),
+					newtime.tm_year+1900, newtime.tm_mon+1, newtime.tm_mday,
+					newtime.tm_hour, newtime.tm_min, newtime.tm_sec);
+				imwrite(nomfichero, m_imgAnaglifo, compression_params);
+			}
 			break;
-			// C
+			// V
+		case (int)'v':
+		case (int)'V':
+		{
+			if (!m_videoWriter.isOpened())
+			{
+				char nomfichero[MAX_PATH];
+				// Fecha y hora actual
+				time_t now = time(0);
+				struct tm newtime;
+				localtime_s(&newtime, &now);
+				snprintf(nomfichero, MAX_PATH, "%sVidAnaglifo_%04d%02d%02d_%02d%02d%02d.avi",
+					SAVEPATH.c_str(),
+					newtime.tm_year + 1900, newtime.tm_mon + 1, newtime.tm_mday,
+					newtime.tm_hour, newtime.tm_min, newtime.tm_sec);
+				Size size = Size((int)m_realWidth, (int)m_realHeight);
+				m_videoWriter.open(nomfichero,
+					VideoWriter::fourcc('M', 'J', 'P', 'G'),
+					FPS, size, true);
+				if (!m_videoWriter.isOpened())
+				{
+					printf("No se abre el vídeo\n");
+				}
+			}
+			else
+			{
+				m_videoWriter.release();
+			}
+		}
+		break;
+		// C
 		case (int)'c':
 		case (int)'C':
 			m_xpos = 0;
@@ -391,6 +443,10 @@ void TwoCameras::ShowImages()
 				printf("La tecla pulsada es %x", key);
 			break;
 		}
+	}
+	if (m_videoWriter.isOpened())
+	{
+		m_videoWriter.release();
 	}
 };
 
