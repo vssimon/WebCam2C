@@ -22,6 +22,11 @@ private:
 	const string m_frame2 = "frame2";
 	const string SAVEPATH = ".\\Images\\";
 	const float FPS = 30.0;
+	static const int MAX_POSCOLOR = 10;
+
+	static const int RED = 2;
+	static const int GREEN = 1;
+	static const int BLUE = 0;
 
 	int m_xpos = 0;
 	int m_ypos = 0;
@@ -36,16 +41,15 @@ private:
 
 	VideoWriter m_videoWriter;
 
-	Scalar m_colorIzquierdo = Scalar(0, 0, 255);
-	Scalar m_colorDerecho = Scalar(255, 255, 0);
+	Scalar m_colorIzq[MAX_POSCOLOR][3];
+	Scalar m_colorDch[MAX_POSCOLOR][3];
+	string m_strColor[MAX_POSCOLOR];
 
 	 //http://acodigo.blogspot.com/2013/06/acceso-la-webcam.html
 
 	Mat m_oriImage0;
 	Mat m_oriImage1;
 	Mat m_imgCompuesta;
-	Mat m_mskImage0;
-	Mat m_mskImage1;
 	Mat m_dstImage0;
 	Mat m_dstImage1;
 	Mat m_dstImage1b;
@@ -70,6 +74,7 @@ public:
 	bool Init(int c1, int c2);
 	void ShowImages();
 	void Release();
+	static void showHelp();
 
 	~TwoCameras();
 };

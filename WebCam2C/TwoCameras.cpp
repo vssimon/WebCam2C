@@ -1,4 +1,5 @@
 #include "TwoCameras.h"
+#include <conio.h>
 #include <direct.h>
 #include <dshow.h>
 #include <time.h>
@@ -97,16 +98,65 @@ bool TwoCameras::Init(int c1, int c2)
 	m_videoCapture1.set(CAP_PROP_FRAME_WIDTH, WIDTH); //Set the frame width
 	m_videoCapture1.set(CAP_PROP_FRAME_HEIGHT, HEIGHT); //Set the frame height
 
+	// Cargar colores en los vectores de ojo
+	// http://zaguan.unizar.es/record/64288/files/TAZ-PFC-2017-047.pdf
+	// http://3dtv.at/Knowhow/AnaglyphComparison_en.aspx
+	m_strColor[0] = "Rojo - Cian (Color)";
+	m_colorIzq[0][RED] = Scalar(0.000, 0.000, 1.000); m_colorIzq[0][GREEN] = Scalar(0.000, 0.000, 0.000); m_colorIzq[0][BLUE] = Scalar(0.000, 0.000, 0.000);
+	m_colorDch[0][RED] = Scalar(0.000, 0.000, 0.000); m_colorDch[0][GREEN] = Scalar(0.000, 1.000, 0.000); m_colorDch[0][BLUE] = Scalar(1.000, 0.000, 0.000);
+
+	m_strColor[1] = "Rojo - Cian (Verdadero)";
+	m_colorIzq[1][RED] = Scalar(0.144, 0.587, 0.299); m_colorIzq[1][GREEN] = Scalar(0.000, 0.000, 0.000); m_colorIzq[1][BLUE] = Scalar(0.000, 0.000, 0.000);
+	m_colorDch[1][RED] = Scalar(0.000, 0.000, 0.000); m_colorDch[1][GREEN] = Scalar(0.000, 0.000, 0.000); m_colorDch[1][BLUE] = Scalar(0.144, 0.587, 0.299);
+
+	m_strColor[2] = "Rojo - Cian (Mono)";
+	m_colorIzq[2][RED] = Scalar(0.144, 0.587, 0.299); m_colorIzq[2][GREEN] = Scalar(0.000, 0.000, 0.000); m_colorIzq[2][BLUE] = Scalar(0.000, 0.000, 0.000);
+	m_colorDch[2][RED] = Scalar(0.000, 0.000, 0.000); m_colorDch[2][GREEN] = Scalar(0.144, 0.587, 0.299); m_colorDch[2][BLUE] = Scalar(0.144, 0.587, 0.299);
+
+	m_strColor[3] = "Rojo - Cian (Colores medios)";
+	m_colorIzq[3][RED] = Scalar(0.144, 0.587, 0.299); m_colorIzq[3][GREEN] = Scalar(0.000, 0.000, 0.000); m_colorIzq[3][BLUE] = Scalar(0.000, 0.000, 0.000);
+	m_colorDch[3][RED] = Scalar(0.000, 0.000, 0.000); m_colorDch[3][GREEN] = Scalar(0.000, 1.000, 0.000); m_colorDch[3][BLUE] = Scalar(1.000, 0.000, 0.000);
+
+	m_strColor[4] = "Rojo - Cian (Optimizado)";
+	m_colorIzq[4][RED] = Scalar(0.300, 0.700, 0.000); m_colorIzq[4][GREEN] = Scalar(0.000, 0.000, 0.000); m_colorIzq[4][BLUE] = Scalar(0.000, 0.000, 0.000);
+	m_colorDch[4][RED] = Scalar(0.000, 0.000, 0.000); m_colorDch[4][GREEN] = Scalar(0.000, 1.000, 0.000); m_colorDch[4][BLUE] = Scalar(1.000, 0.000, 0.000);
+
+	m_strColor[5] = "Verde - Magenta";
+	m_colorIzq[5][RED] = Scalar(0.000, 0.000, 0.000); m_colorIzq[5][GREEN] = Scalar(0.000, 1.000, 0.000); m_colorIzq[5][BLUE] = Scalar(0.000, 0.000, 0.000);
+	m_colorDch[5][RED] = Scalar(0.000, 0.000, 1.000); m_colorDch[5][GREEN] = Scalar(0.000, 0.000, 0.000); m_colorDch[5][BLUE] = Scalar(1.000, 0.000, 0.000);
+
+	m_strColor[6] = "Azul - Amarillo";
+	m_colorIzq[6][RED] = Scalar(0.000, 0.000, 0.000); m_colorIzq[6][GREEN] = Scalar(0.000, 0.000, 0.000); m_colorIzq[6][BLUE] = Scalar(1.000, 0.000, 0.000);
+	m_colorDch[6][RED] = Scalar(0.000, 0.000, 1.000); m_colorDch[6][GREEN] = Scalar(0.000, 1.000, 0.000); m_colorDch[6][BLUE] = Scalar(0.000, 0.000, 0.000);
+
+	m_strColor[7] = "Rojo - Verde";
+	m_colorIzq[7][RED] = Scalar(0.000, 0.000, 1.000); m_colorIzq[7][GREEN] = Scalar(0.000, 0.000, 0.000); m_colorIzq[7][BLUE] = Scalar(0.000, 0.000, 0.000);
+	m_colorDch[7][RED] = Scalar(0.000, 0.000, 0.000); m_colorDch[7][GREEN] = Scalar(0.000, 1.000, 0.000); m_colorDch[7][BLUE] = Scalar(0.000, 0.000, 0.000);
+
+	m_strColor[8] = "Rojo - Azul";
+	m_colorIzq[8][RED] = Scalar(0.000, 0.000, 1.000); m_colorIzq[8][GREEN] = Scalar(0.000, 0.000, 0.000); m_colorIzq[8][BLUE] = Scalar(0.000, 0.000, 0.000);
+	m_colorDch[8][RED] = Scalar(0.000, 0.000, 0.000); m_colorDch[8][GREEN] = Scalar(0.000, 0.000, 0.000); m_colorDch[8][BLUE] = Scalar(1.000, 0.000, 0.000);
+
+	m_strColor[9] = "Verde - Azul";
+	m_colorIzq[9][RED] = Scalar(0.000, 0.000, 0.000); m_colorIzq[9][GREEN] = Scalar(0.000, 1.000, 0.000); m_colorIzq[9][BLUE] = Scalar(0.000, 0.000, 0.000);
+	m_colorDch[9][RED] = Scalar(0.000, 0.000, 0.000); m_colorDch[9][GREEN] = Scalar(0.000, 0.000, 0.000); m_colorDch[9][BLUE] = Scalar(1.000, 0.000, 0.000);
+
+	/*
+	Matrices = {
+	'color': [ [ 1, 0, 0, 0, 0, 0, 0, 0, 0 ], [ 0, 0, 0, 0, 1, 0, 0, 0, 1 ] ],
+	'true': [ [ 0.299, 0.587, 0.114, 0, 0, 0, 0, 0, 0 ], [ 0, 0, 0, 0, 0, 0, 0.299, 0.587, 0.114 ] ],
+	'mono': [ [ 0.299, 0.587, 0.114, 0, 0, 0, 0, 0, 0 ], [ 0, 0, 0, 0.299, 0.587, 0.114, 0.299, 0.587, 0.114 ] ],
+	'halfcolor': [ [ 0.299, 0.587, 0.114, 0, 0, 0, 0, 0, 0 ], [ 0, 0, 0, 0, 1, 0, 0, 0, 1 ] ],
+	'optimized': [ [ 0, 0.7, 0.3, 0, 0, 0, 0, 0, 0 ], [ 0, 0, 0, 0, 1, 0, 0, 0, 1 ] ],
+	}
+	*/
+
 	if (m_videoCapture0.isOpened() && m_videoCapture1.isOpened())
 	{
 		res = true;
 		m_videoCapture0.read(m_oriImage0);
-		m_mskImage0 = m_oriImage0.clone();
-		m_mskImage0.setTo(m_colorIzquierdo);
 
 		m_videoCapture1.read(m_oriImage1);
-		m_mskImage1 = m_oriImage1.clone();
-		m_mskImage1.setTo(m_colorDerecho);
 
 		m_dstImage1b = m_oriImage1.clone();
 		m_dstImage1b.setTo(Scalar(0, 0, 0));
@@ -117,10 +167,6 @@ bool TwoCameras::Init(int c1, int c2)
 		namedWindow(m_frame0, WINDOW_AUTOSIZE);
 		namedWindow(m_frame1, WINDOW_AUTOSIZE);
 		namedWindow(m_frame2, WINDOW_AUTOSIZE);
-
-		imshow(m_frame0, m_oriImage0);
-		imshow(m_frame1, m_oriImage1);
-		imshow(m_frame2, m_mskImage0);
 
 		DWORD dwAttr = GetFileAttributes(SAVEPATH.c_str());
 
@@ -168,12 +214,25 @@ void TwoCameras::ShowImages()
 	bool showCam1 = true;
 	bool showRes = true;
 	// Colores de filtro
-	bool primario = true;
 	bool natural = true;
+	int posColor = 0;
 
 	vector<int> compression_params;
 	compression_params.push_back(cv::IMWRITE_PNG_COMPRESSION);
 	compression_params.push_back(9);
+
+	// Para revisar
+	// https://walchko.github.io/blog/Vision/anaglyphs/anaglyphs.html
+	// http://3dtv.at/Knowhow/AnaglyphComparison_en.aspx
+	// http://zaguan.unizar.es/record/64288/files/TAZ-PFC-2017-047.pdf
+
+	Mat BGR0[3];
+	Mat BGR1[3];
+	Mat BGR2[3];
+
+	cv::split(m_oriImage0, BGR0);
+	cv::split(m_oriImage0, BGR1);
+	cv::split(m_oriImage0, BGR2);
 
 	while (continuar)
 	{
@@ -188,10 +247,6 @@ void TwoCameras::ShowImages()
 			m_videoCapture0.read(m_oriImage1);
 			m_videoCapture1.read(m_oriImage0);
 		}
-
-		// Convertir
-		cv::bitwise_and(m_mskImage0, m_oriImage0, m_dstImage0);
-		cv::bitwise_and(m_mskImage1, m_oriImage1, m_dstImage1);
 
 		if (m_xpos < 0)
 		{
@@ -223,6 +278,50 @@ void TwoCameras::ShowImages()
 			dfiny = (int)m_realHeight;
 		}
 
+		// Transform
+		m_dstImage1b.setTo(0x000000);
+		m_oriImage1.colRange(oinix, ofinx).rowRange(oiniy, ofiny).copyTo(m_dstImage1b.colRange(dinix, dfinx).rowRange(diniy, dfiny));
+
+		// Rotation
+		m_rotacion = getRotationMatrix2D(m_centro, m_angulo, 1.0);
+		warpAffine(m_dstImage1b, m_dstImage1c, m_rotacion, m_dstImage1b.size());
+
+		// Separar las imágenes
+		if (natural)
+		{
+			cv::split(m_oriImage0, BGR0);
+			cv::split(m_dstImage1c, BGR1);
+		}
+		else
+		{
+			cv::split(m_oriImage0, BGR1);
+			cv::split(m_dstImage1c, BGR0);
+		}
+
+		BGR0[RED] = (BGR0[RED] * m_colorIzq[posColor][RED][RED]) + (BGR0[GREEN] * m_colorIzq[posColor][RED][GREEN]) + (BGR0[BLUE] * m_colorIzq[posColor][RED][BLUE]);
+		BGR0[GREEN] = (BGR0[RED] * m_colorIzq[posColor][GREEN][RED]) + (BGR0[GREEN] * m_colorIzq[posColor][GREEN][GREEN]) + (BGR0[BLUE] * m_colorIzq[posColor][GREEN][BLUE]);
+		BGR0[BLUE] = (BGR0[RED] * m_colorIzq[posColor][BLUE][RED]) + (BGR0[GREEN] * m_colorIzq[posColor][BLUE][GREEN]) + (BGR0[BLUE] * m_colorIzq[posColor][BLUE][BLUE]);
+
+		BGR1[RED] = (BGR1[RED] * m_colorDch[posColor][RED][RED]) + (BGR1[GREEN] * m_colorDch[posColor][RED][GREEN]) + (BGR1[BLUE] * m_colorDch[posColor][RED][BLUE]);
+		BGR1[GREEN] = (BGR1[RED] * m_colorDch[posColor][GREEN][RED]) + (BGR1[GREEN] * m_colorDch[posColor][GREEN][GREEN]) + (BGR1[BLUE] * m_colorDch[posColor][GREEN][BLUE]);
+		BGR1[BLUE] = (BGR1[RED] * m_colorDch[posColor][BLUE][RED]) + (BGR1[GREEN] * m_colorDch[posColor][BLUE][GREEN]) + (BGR1[BLUE] * m_colorDch[posColor][BLUE][BLUE]);
+
+		BGR2[RED] = BGR0[RED];
+		BGR2[GREEN] = BGR1[GREEN];
+		BGR2[BLUE] = BGR1[BLUE];
+
+		if (natural)
+		{
+			cv::merge(BGR0, 3, m_oriImage0);
+			cv::merge(BGR1, 3, m_dstImage1c);
+		}
+		else
+		{
+			cv::merge(BGR1, 3, m_oriImage0);
+			cv::merge(BGR0, 3, m_dstImage1c);
+		}
+		cv::merge(BGR2, 3, m_imgAnaglifo);
+
 		// Show
 		if (showCam0)
 		{
@@ -230,7 +329,7 @@ void TwoCameras::ShowImages()
 			{
 				namedWindow(m_frame0, WINDOW_AUTOSIZE);
 			}
-			imshow(m_frame0, m_dstImage0);
+			imshow(m_frame0, m_oriImage0);
 		}
 		else
 		{
@@ -246,7 +345,7 @@ void TwoCameras::ShowImages()
 			{
 				namedWindow(m_frame1, WINDOW_AUTOSIZE);
 			}
-			imshow(m_frame1, m_dstImage1);
+			imshow(m_frame1, m_dstImage1c);
 		}
 		else
 		{
@@ -256,18 +355,6 @@ void TwoCameras::ShowImages()
 			}
 		}
 
-		// Transform
-		m_dstImage1b.setTo(0x000000);
-		m_dstImage1.colRange(oinix, ofinx).rowRange(oiniy, ofiny).copyTo(m_dstImage1b.colRange(dinix, dfinx).rowRange(diniy,dfiny));
-
-		// Rotation
-		m_rotacion = getRotationMatrix2D(m_centro, m_angulo, 1.0);
-		warpAffine(m_dstImage1b, m_dstImage1c, m_rotacion, m_dstImage1b.size());
-
-		// Anaglifo
-		cv::bitwise_or(m_dstImage0,
-			m_dstImage1c,
-			m_imgAnaglifo);
 
 		// Video result
 		if (m_videoWriter.isOpened())
@@ -362,39 +449,23 @@ void TwoCameras::ShowImages()
 		case (int)'P':
 		case (int)'k':
 		case (int)'K':
-			if( key==(int)'p' || key == (int)'P')
-				primario = !primario;
 			if (key == (int)'k' || key == (int)'K')
+			{
+				posColor = (++posColor) % MAX_POSCOLOR;
+			}
+			if (key == (int)'p' || key == (int)'P')
 				natural = !natural;
 
-			if (primario)
+			if (natural)
 			{
-				if (natural)
-				{
-					m_colorIzquierdo = Scalar(0, 0, 255);
-					m_colorDerecho = Scalar(255, 255, 0);
-				}
-				else
-				{
-					m_colorIzquierdo = Scalar(0, 255, 0);
-					m_colorDerecho = Scalar(255, 0, 255);
-				}
+				printf("\tColor: Natural %s\n",
+					m_strColor[posColor].c_str());
 			}
 			else
 			{
-				if (natural)
-				{
-					m_colorIzquierdo = Scalar(255, 255, 0);
-					m_colorDerecho = Scalar(0, 0, 255); 
-				}
-				else
-				{
-					m_colorIzquierdo = Scalar(255, 0, 255);
-					m_colorDerecho = Scalar(0, 255, 0); 
-				}
+				printf("\tColor: Invertido %s\n",
+					m_strColor[posColor].c_str());
 			}
-			m_mskImage0.setTo(m_colorIzquierdo);
-			m_mskImage1.setTo(m_colorDerecho);
 			break;
 			// Muestra/Oculta cámara 0
 		case (int)0x700000:
@@ -455,8 +526,6 @@ void TwoCameras::Release()
 	m_oriImage0.release();
 	m_oriImage1.release();
 	m_imgCompuesta.release();
-	m_mskImage0.release();
-	m_mskImage1.release();
 	m_dstImage0.release();
 	m_dstImage1.release();
 	m_dstImage1b.release();
@@ -486,3 +555,23 @@ std::string TwoCameras::ConvertWCSToMBS(const wchar_t* pstr, long wslen)
 
 	return dblstr;
 }
+
+void TwoCameras::showHelp()
+{
+	printf("\n");
+	printf("\tWebCam2C (Ayuda)\n");
+	printf("\t----------------------------------------\n");
+	printf("\t----------------------------------------\n");
+	printf("\t- Esc: Cierra el programa.\n");
+	printf("\t- F1, F2 y F3 : Muestran u ocultan las pantallas izquierda,\n\t\tderecha y de anaglifo, respectivamente.\n");
+	printf("\t- I,i : Intercambia las cámaras.\n");
+	printf("\t- F,f : Toma una foto y la guarda en un fichero.\n");
+	printf("\t- V,v : Inicia y finaliza la grabación de vídeo.\n");
+	printf("\t- C,c : Centra la imágenes, a la posición inicial.\n");
+	printf("\t- P,p : Intercambia el color de filtro de cada ojo. No equivale\n\t\ta I, porque I influye en la perspectiva.\n");
+	printf("\t- K,k : Cambia los colores de cada filtro.\n");
+	printf("\t- Flechas izquierda, derecha, arriba y abajo : Mueven la imagen de\n\t\tla cámara derecha a izquierda, derecha, arriba y abajo; respectivamente.\n");
+	printf("\t- AvPag y RePag : Rotan la imagen de la cámara de la derecha.\n");
+	printf("\tEstas funcionalidades sirven para calibrar por software la alineación\n\t\tde las cámaras.\n");
+}
+
