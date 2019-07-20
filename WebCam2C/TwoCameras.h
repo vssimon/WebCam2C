@@ -22,7 +22,7 @@ private:
 	const string m_frame2 = "frame2";
 	const string SAVEPATH = ".\\Images\\";
 	const float FPS = 30.0;
-	static const int MAX_POSCOLOR = 10;
+	static const int MAX_POSCOLOR = 12;
 
 	static const int RED = 2;
 	static const int GREEN = 1;
@@ -60,6 +60,8 @@ private:
 
 	void CamSettings();
 
+	void CargaVectoresColor();
+
 	// https://stackoverflow.com/questions/4286223/how-to-get-a-list-of-video-capture-devices-web-cameras-on-windows-c
 	HRESULT GetDevices(REFGUID CLSID_categoria, IEnumMoniker **ppEnum);
 	list<string> DisplayDeviceInformation(IEnumMoniker *pEnum);
@@ -68,6 +70,15 @@ private:
 	std::string ConvertBSTRToMBS(BSTR bstr);
 	std::string ConvertWCSToMBS(const wchar_t* pstr, long wslen);
 public:
+	enum Errores
+	{
+		Ok = 0,
+		NoImagenIzq = 1,
+		NoImagenDch = 2,
+		NoMismoFormato = 3,
+		NoProcesado = 99
+	};
+
 	TwoCameras();
 
 	list<string> GetListCameras();
@@ -76,7 +87,10 @@ public:
 	void Release();
 	static void showHelp();
 
+	Errores JoinImageFiles(string fchIzq, string fchDch, string fchRes, int modo);
+
 	~TwoCameras();
+
 };
 
 #endif // !__TWOCAMERAS

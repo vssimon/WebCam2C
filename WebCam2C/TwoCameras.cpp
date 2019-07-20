@@ -87,17 +87,71 @@ list<string> TwoCameras::DisplayDeviceInformation(IEnumMoniker *pEnum)
 	return res;
 }
 
-bool TwoCameras::Init(int c1, int c2)
+TwoCameras::Errores TwoCameras::JoinImageFiles(string fchIzq, string fchDch, string fchRes, int posColor)
 {
-	bool res = false;
-	m_videoCapture0.open(c1);
-	m_videoCapture0.set(CAP_PROP_FRAME_WIDTH, WIDTH); //Set the frame width
-	m_videoCapture0.set(CAP_PROP_FRAME_HEIGHT, HEIGHT); //Set the frame height
+	Errores res = Errores::Ok;
 
-	m_videoCapture1.open(c2);
-	m_videoCapture1.set(CAP_PROP_FRAME_WIDTH, WIDTH); //Set the frame width
-	m_videoCapture1.set(CAP_PROP_FRAME_HEIGHT, HEIGHT); //Set the frame height
+	m_oriImage0 = cv::imread(fchIzq, cv::IMREAD_COLOR);
+	m_oriImage1 = cv::imread(fchDch, cv::IMREAD_COLOR);
 
+
+	if (m_oriImage0.data == NULL)
+	{
+		res = Errores::NoImagenIzq;
+	}
+	else if( m_oriImage1.data==NULL )
+	{
+		res = Errores::NoImagenDch;
+	}
+	else
+	{
+		posColor = posColor % MAX_POSCOLOR;
+
+		Mat BGR0[3];
+		Mat BGR1[3];
+		Mat BGR2[3];
+
+		cv::split(m_oriImage0, BGR0);
+		cv::split(m_oriImage1, BGR1);
+		cv::split(m_oriImage1, BGR2);
+
+		CargaVectoresColor();
+
+		BGR0[RED] = (BGR0[RED] * m_colorIzq[posColor][RED][RED]) + (BGR0[GREEN] * m_colorIzq[posColor][RED][GREEN]) + (BGR0[BLUE] * m_colorIzq[posColor][RED][BLUE]);
+		//BGR0[GREEN] = (BGR0[RED] * m_colorIzq[posColor][GREEN][RED]) + (BGR0[GREEN] * m_colorIzq[posColor][GREEN][GREEN]) + (BGR0[BLUE] * m_colorIzq[posColor][GREEN][BLUE]);
+		//BGR0[BLUE] = (BGR0[RED] * m_colorIzq[posColor][BLUE][RED]) + (BGR0[GREEN] * m_colorIzq[posColor][BLUE][GREEN]) + (BGR0[BLUE] * m_colorIzq[posColor][BLUE][BLUE]);
+
+		//BGR1[RED] = (BGR1[RED] * m_colorDch[posColor][RED][RED]) + (BGR1[GREEN] * m_colorDch[posColor][RED][GREEN]) + (BGR1[BLUE] * m_colorDch[posColor][RED][BLUE]);
+		BGR1[GREEN] = (BGR1[RED] * m_colorDch[posColor][GREEN][RED]) + (BGR1[GREEN] * m_colorDch[posColor][GREEN][GREEN]) + (BGR1[BLUE] * m_colorDch[posColor][GREEN][BLUE]);
+		BGR1[BLUE] = (BGR1[RED] * m_colorDch[posColor][BLUE][RED]) + (BGR1[GREEN] * m_colorDch[posColor][BLUE][GREEN]) + (BGR1[BLUE] * m_colorDch[posColor][BLUE][BLUE]);
+
+		BGR2[RED] = BGR0[RED];
+		BGR2[GREEN] = BGR1[GREEN];
+		BGR2[BLUE] = BGR1[BLUE];
+
+		cv::merge(BGR2, 3, m_imgAnaglifo);
+
+		//std::vector<int> qualityType;
+		//qualityType.push_back(cv::IMWRITE_JPEG_QUALITY);
+		//qualityType.push_back(100);
+
+		//vector<int> compression_params;
+		//compression_params.push_back(cv::IMWRITE_PNG_COMPRESSION);
+		//compression_params.push_back(9);
+
+		imwrite(fchRes, m_imgAnaglifo);
+
+		waitKey(30);
+
+		res = Errores::Ok;
+	}
+
+
+	return res;
+};
+
+void TwoCameras::CargaVectoresColor()
+{
 	// Cargar colores en los vectores de ojo
 	// http://zaguan.unizar.es/record/64288/files/TAZ-PFC-2017-047.pdf
 	// http://3dtv.at/Knowhow/AnaglyphComparison_en.aspx
@@ -141,6 +195,14 @@ bool TwoCameras::Init(int c1, int c2)
 	m_colorIzq[9][RED] = Scalar(0.000, 0.000, 0.000); m_colorIzq[9][GREEN] = Scalar(0.000, 1.000, 0.000); m_colorIzq[9][BLUE] = Scalar(0.000, 0.000, 0.000);
 	m_colorDch[9][RED] = Scalar(0.000, 0.000, 0.000); m_colorDch[9][GREEN] = Scalar(0.000, 0.000, 0.000); m_colorDch[9][BLUE] = Scalar(1.000, 0.000, 0.000);
 
+	m_strColor[10] = "Rojo - Cian (Verdadero clareado)";
+	m_colorIzq[10][RED] = Scalar(0.144, 0.587, 0.299); m_colorIzq[10][GREEN] = Scalar(0.000, 0.000, 0.000); m_colorIzq[10][BLUE] = Scalar(0.000, 0.000, 0.000);
+	m_colorDch[10][RED] = Scalar(0.000, 0.000, 0.000); m_colorDch[10][GREEN] = Scalar(0.100, 0.100, 0.100); m_colorDch[10][BLUE] = Scalar(0.144, 0.587, 0.299);
+
+	m_strColor[11] = "Rojo - Cian (Verdadero muy clareado)";
+	m_colorIzq[11][RED] = Scalar(0.144, 0.587, 0.299); m_colorIzq[11][GREEN] = Scalar(0.000, 0.000, 0.000); m_colorIzq[11][BLUE] = Scalar(0.000, 0.000, 0.000);
+	m_colorDch[11][RED] = Scalar(0.000, 0.000, 0.000); m_colorDch[11][GREEN] = Scalar(0.300, 0.300, 0.300); m_colorDch[11][BLUE] = Scalar(0.144, 0.587, 0.299);
+
 	/*
 	Matrices = {
 	'color': [ [ 1, 0, 0, 0, 0, 0, 0, 0, 0 ], [ 0, 0, 0, 0, 1, 0, 0, 0, 1 ] ],
@@ -150,6 +212,20 @@ bool TwoCameras::Init(int c1, int c2)
 	'optimized': [ [ 0, 0.7, 0.3, 0, 0, 0, 0, 0, 0 ], [ 0, 0, 0, 0, 1, 0, 0, 0, 1 ] ],
 	}
 	*/
+}
+
+bool TwoCameras::Init(int c1, int c2)
+{
+	bool res = false;
+	m_videoCapture0.open(c1);
+	m_videoCapture0.set(CAP_PROP_FRAME_WIDTH, WIDTH); //Set the frame width
+	m_videoCapture0.set(CAP_PROP_FRAME_HEIGHT, HEIGHT); //Set the frame height
+
+	m_videoCapture1.open(c2);
+	m_videoCapture1.set(CAP_PROP_FRAME_WIDTH, WIDTH); //Set the frame width
+	m_videoCapture1.set(CAP_PROP_FRAME_HEIGHT, HEIGHT); //Set the frame height
+
+	CargaVectoresColor();
 
 	if (m_videoCapture0.isOpened() && m_videoCapture1.isOpened())
 	{
