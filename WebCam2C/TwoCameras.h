@@ -4,17 +4,56 @@
 
 #include <windows.h>
 #include <windef.h>
-#include <list>
 #include <opencv2\opencv.hpp>
+#include <dshow.h>
 
 using namespace std;
 using namespace cv;
 
 class TwoCameras
 {
+public:
+	enum Errores
+	{
+		Ok = 0,
+		NoImagenIzq = 1,
+		NoImagenDch = 2,
+		NoMismoFormato = 3,
+		NoProcesado = 99
+	};
+
+	class CamValues
+	{
+	public:
+		string resolution;
+		long width;
+		long height;
+		unsigned int bitrate;
+		unsigned int bitcount;
+		int FPS;
+	};
+
+	class CamInfo
+	{
+	public:
+		string name;
+		vector<CamValues> values;
+	};
+
+	TwoCameras();
+
+	vector<CamInfo> GetListCameras();
+
+	bool Init(int c1, int c2, long width, long height, int FPS);
+	void ShowImages();
+	void Release();
+	static void showHelp();
+
+	Errores JoinImageFiles(string fchIzq, string fchDch, string fchRes, int modo);
+
+	~TwoCameras();
+
 private:
-	const float WIDTH = 800.0;
-	const float HEIGHT = 600.0;
 	const int MAX_ANGLE = 45;
 
 	const string m_frame0 = "frame0";
@@ -64,33 +103,13 @@ private:
 
 	// https://stackoverflow.com/questions/4286223/how-to-get-a-list-of-video-capture-devices-web-cameras-on-windows-c
 	HRESULT GetDevices(REFGUID CLSID_categoria, IEnumMoniker **ppEnum);
-	list<string> DisplayDeviceInformation(IEnumMoniker *pEnum);
+	vector<CamInfo> GetCams(IEnumMoniker *pEnum);
+	vector<CamValues> GetCamValues(IBaseFilter *pBaseFilter);
 
 	// https://stackoverflow.com/questions/6284524/bstr-to-stdstring-stdwstring-and-vice-versa
 	std::string ConvertBSTRToMBS(BSTR bstr);
+	std::string ConvertWCHARToMBS(WCHAR wc[], int lon);
 	std::string ConvertWCSToMBS(const wchar_t* pstr, long wslen);
-public:
-	enum Errores
-	{
-		Ok = 0,
-		NoImagenIzq = 1,
-		NoImagenDch = 2,
-		NoMismoFormato = 3,
-		NoProcesado = 99
-	};
-
-	TwoCameras();
-
-	list<string> GetListCameras();
-	bool Init(int c1, int c2);
-	void ShowImages();
-	void Release();
-	static void showHelp();
-
-	Errores JoinImageFiles(string fchIzq, string fchDch, string fchRes, int modo);
-
-	~TwoCameras();
-
 };
 
 #endif // !__TWOCAMERAS

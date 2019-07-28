@@ -1,7 +1,6 @@
 #include "TwoCameras.h"
 #include <conio.h>
 #include <direct.h>
-#include <dshow.h>
 #include <time.h>
 
 #pragma comment(lib, "strmiids")
@@ -14,9 +13,9 @@ TwoCameras::~TwoCameras()
 {
 }
 
-list<string> TwoCameras::GetListCameras()
+vector<TwoCameras::CamInfo> TwoCameras::GetListCameras()
 {
-	list<string> res;
+	vector<CamInfo> res;
 
 	HRESULT hr = CoInitializeEx(NULL, COINIT_MULTITHREADED);
 	if (SUCCEEDED(hr))
@@ -26,7 +25,7 @@ list<string> TwoCameras::GetListCameras()
 		hr = GetDevices(CLSID_VideoInputDeviceCategory, &pEnum);
 		if (SUCCEEDED(hr))
 		{
-			res = DisplayDeviceInformation(pEnum);
+			res = GetCams(pEnum);
 			pEnum->Release();
 		}
 		CoUninitialize();
@@ -55,13 +54,18 @@ HRESULT TwoCameras::GetDevices(REFGUID CLSID_categoria, IEnumMoniker **ppEnum)
 	return hr;
 }
 
-list<string> TwoCameras::DisplayDeviceInformation(IEnumMoniker *pEnum)
+// https://stackoverflow.com/questions/18370146/opencv-get-camera-resolutions-c
+
+vector<TwoCameras::CamInfo> TwoCameras::GetCams(IEnumMoniker *pEnum)
 {
-	list<string> res;
+	vector<TwoCameras::CamInfo> res;
 
 	IMoniker *pMoniker = NULL;
 
-	while (pEnum->Next(1, &pMoniker, NULL) == S_OK)
+	//int num = 0;
+
+	//while (pEnum->Next(1, &pMoniker, NULL) == S_OK)
+	for (int id=0; pEnum->Next(1, &pMoniker, NULL) == S_OK; id++)
 	{
 		IPropertyBag *pPropBag;
 
@@ -75,7 +79,21 @@ list<string> TwoCameras::DisplayDeviceInformation(IEnumMoniker *pEnum)
 			hr = pPropBag->Read(L"FriendlyName", &var, 0);
 			if (SUCCEEDED(hr))
 			{
-				res.push_back(ConvertBSTRToMBS(var.bstrVal));
+				TwoCameras::CamInfo element;
+				element.name = ConvertBSTRToMBS(var.bstrVal);
+				//res.push_back(ConvertBSTRToMBS(var.bstrVal));
+
+				// cargar valores de alto, ancho, bitrate y FPS
+				IBaseFilter *pFilter;
+				hr = pMoniker->BindToObject(NULL, NULL, IID_IBaseFilter,
+					(void**)&pFilter);
+				// Procesar el filtro
+				if( pFilter!=NULL )
+					element.values = GetCamValues(pFilter);
+
+				res.push_back(element);
+
+				// fin lista
 				VariantClear(&var);
 			}
 		}
@@ -86,6 +104,79 @@ list<string> TwoCameras::DisplayDeviceInformation(IEnumMoniker *pEnum)
 
 	return res;
 }
+
+vector<TwoCameras::CamValues> TwoCameras::GetCamValues(IBaseFilter *pBaseFilter)
+{
+	vector<TwoCameras::CamValues> res;
+
+	if (pBaseFilter != NULL)
+	{
+		HRESULT hr = 0;
+		vector<IPin*> pins;
+		IEnumPins *EnumPins;
+		pBaseFilter->EnumPins(&EnumPins);
+		pins.clear();
+		for (;;)
+		{
+			IPin *pin;
+			hr = EnumPins->Next(1, &pin, NULL);
+			if (hr != S_OK) { break; }
+			pins.push_back(pin);
+			pin->Release();
+		}
+		EnumPins->Release();
+
+		PIN_INFO pInfo;
+		for (int i = 0; i < pins.size(); i++)
+		{
+			pins[i]->QueryPinInfo(&pInfo);
+
+			IEnumMediaTypes *emt = NULL;
+			pins[i]->EnumMediaTypes(&emt);
+
+			AM_MEDIA_TYPE *pmt;
+
+			for (int id = 0; emt->Next(1, &pmt, NULL) == S_OK; id++)
+			{
+				if ((pmt->formattype == FORMAT_VideoInfo) &&
+					(pmt->cbFormat >= sizeof(VIDEOINFOHEADER)) &&
+					(pmt->pbFormat != NULL))
+				{
+					VIDEOINFOHEADER *pVIH = (VIDEOINFOHEADER*)pmt->pbFormat;
+					TwoCameras::CamValues element;
+
+					element.resolution = ConvertWCHARToMBS(pInfo.achName, 128);
+					element.height = pVIH->bmiHeader.biHeight;
+					element.width = pVIH->bmiHeader.biWidth;
+					element.bitrate = pVIH->dwBitRate;
+					element.bitcount = pVIH->bmiHeader.biBitCount; // bit/pixel
+					element.FPS = (int)floor(10000000.0 / static_cast<double>(pVIH->AvgTimePerFrame));
+					res.push_back(element);
+				}
+
+				if (pmt->cbFormat != 0)
+				{
+					CoTaskMemFree((PVOID)pmt->pbFormat);
+					pmt->cbFormat = 0;
+					pmt->pbFormat = NULL;
+				}
+				if (pmt->pUnk != NULL)
+				{
+					// pUnk should not be used.
+					pmt->pUnk->Release();
+					pmt->pUnk = NULL;
+				}
+
+			}
+			emt->Release();
+		}
+
+		pins.clear();
+	};
+
+	return res;
+}
+
 
 TwoCameras::Errores TwoCameras::JoinImageFiles(string fchIzq, string fchDch, string fchRes, int posColor)
 {
@@ -214,16 +305,18 @@ void TwoCameras::CargaVectoresColor()
 	*/
 }
 
-bool TwoCameras::Init(int c1, int c2)
+bool TwoCameras::Init(int c1, int c2, long width, long height, int FPS)
 {
 	bool res = false;
 	m_videoCapture0.open(c1);
-	m_videoCapture0.set(CAP_PROP_FRAME_WIDTH, WIDTH); //Set the frame width
-	m_videoCapture0.set(CAP_PROP_FRAME_HEIGHT, HEIGHT); //Set the frame height
+	m_videoCapture0.set(CAP_PROP_FRAME_WIDTH, width); //Set the frame width
+	m_videoCapture0.set(CAP_PROP_FRAME_HEIGHT, height); //Set the frame height
+	m_videoCapture0.set(CAP_PROP_FRAME_HEIGHT, height); //Set the FPS
 
 	m_videoCapture1.open(c2);
-	m_videoCapture1.set(CAP_PROP_FRAME_WIDTH, WIDTH); //Set the frame width
-	m_videoCapture1.set(CAP_PROP_FRAME_HEIGHT, HEIGHT); //Set the frame height
+	m_videoCapture1.set(CAP_PROP_FRAME_WIDTH, width); //Set the frame width
+	m_videoCapture1.set(CAP_PROP_FRAME_HEIGHT, height); //Set the frame height
+	m_videoCapture1.set(CAP_PROP_FPS, FPS); //Set the FPS
 
 	CargaVectoresColor();
 
@@ -483,7 +576,54 @@ void TwoCameras::ShowImages()
 				imwrite(nomfichero, m_imgAnaglifo, compression_params);
 			}
 			break;
-			// V
+			// D
+		case (int)'d':
+		case (int)'D':
+			{
+				char nomfichero[MAX_PATH];
+				// Fecha y hora actual
+				time_t now = time(0);
+				struct tm newtime;
+				localtime_s(&newtime, &now);
+				snprintf(nomfichero, MAX_PATH, "%sIzqImgAnaglifo_%04d%02d%02d_%02d%02d%02d.png",
+					SAVEPATH.c_str(),
+					newtime.tm_year + 1900, newtime.tm_mon + 1, newtime.tm_mday,
+					newtime.tm_hour, newtime.tm_min, newtime.tm_sec);
+				imwrite(nomfichero, m_oriImage0, compression_params);
+				snprintf(nomfichero, MAX_PATH, "%sDchImgAnaglifo_%04d%02d%02d_%02d%02d%02d.png",
+					SAVEPATH.c_str(),
+					newtime.tm_year + 1900, newtime.tm_mon + 1, newtime.tm_mday,
+					newtime.tm_hour, newtime.tm_min, newtime.tm_sec);
+				imwrite(nomfichero, m_oriImage1, compression_params);
+			}
+			break;
+			// T
+		case (int)'t':
+		case (int)'T':
+		{
+			char nomfichero[MAX_PATH];
+			// Fecha y hora actual
+			time_t now = time(0);
+			struct tm newtime;
+			localtime_s(&newtime, &now);
+			snprintf(nomfichero, MAX_PATH, "%sIzqImgAnaglifo_%04d%02d%02d_%02d%02d%02d.png",
+				SAVEPATH.c_str(),
+				newtime.tm_year + 1900, newtime.tm_mon + 1, newtime.tm_mday,
+				newtime.tm_hour, newtime.tm_min, newtime.tm_sec);
+			imwrite(nomfichero, m_oriImage0, compression_params);
+			snprintf(nomfichero, MAX_PATH, "%sDchImgAnaglifo_%04d%02d%02d_%02d%02d%02d.png",
+				SAVEPATH.c_str(),
+				newtime.tm_year + 1900, newtime.tm_mon + 1, newtime.tm_mday,
+				newtime.tm_hour, newtime.tm_min, newtime.tm_sec);
+			imwrite(nomfichero, m_oriImage1, compression_params);
+			snprintf(nomfichero, MAX_PATH, "%sAnaImgAnaglifo_%04d%02d%02d_%02d%02d%02d.png",
+				SAVEPATH.c_str(),
+				newtime.tm_year + 1900, newtime.tm_mon + 1, newtime.tm_mday,
+				newtime.tm_hour, newtime.tm_min, newtime.tm_sec);
+			imwrite(nomfichero, m_imgAnaglifo, compression_params);
+		}
+		break;
+		// V
 		case (int)'v':
 		case (int)'V':
 		{
@@ -619,6 +759,25 @@ std::string TwoCameras::ConvertBSTRToMBS(BSTR bstr)
 	return ConvertWCSToMBS((wchar_t*)bstr, wslen);
 }
 
+std::string TwoCameras::ConvertWCHARToMBS(WCHAR wc[], int lon)
+{
+	//WCHAR wc[260] = L"Hello World";
+	//convert from wide char to narrow char array
+	if (lon < 1024)
+	{
+		char ch[1024];
+		char DefChar = ' ';
+		WideCharToMultiByte(CP_ACP, 0, wc, -1, ch, lon, &DefChar, NULL);
+
+		std::string ss(ch);
+		return ss;
+	}
+	else
+	{
+		return "";
+	}
+}
+
 std::string TwoCameras::ConvertWCSToMBS(const wchar_t* pstr, long wslen)
 {
 	int len = ::WideCharToMultiByte(CP_ACP, 0, pstr, wslen, NULL, 0, NULL, NULL);
@@ -642,6 +801,8 @@ void TwoCameras::showHelp()
 	printf("\t- F1, F2 y F3 : Muestran u ocultan las pantallas izquierda,\n\t\tderecha y de anaglifo, respectivamente.\n");
 	printf("\t- I,i : Intercambia las cámaras.\n");
 	printf("\t- F,f : Toma una foto y la guarda en un fichero.\n");
+	printf("\t- D,d : Toma una foto y la guarda en dos ficheros, uno por cada ojo.\n");
+	printf("\t- T,t : Toma una foto y la guarda en tres ficheros, uno por cada ojo y el anaglifo.\n");
 	printf("\t- V,v : Inicia y finaliza la grabación de vídeo.\n");
 	printf("\t- C,c : Centra la imágenes, a la posición inicial.\n");
 	printf("\t- P,p : Intercambia el color de filtro de cada ojo. No equivale\n\t\ta I, porque I influye en la perspectiva.\n");
@@ -650,4 +811,6 @@ void TwoCameras::showHelp()
 	printf("\t- AvPag y RePag : Rotan la imagen de la cámara de la derecha.\n");
 	printf("\tEstas funcionalidades sirven para calibrar por software la alineación\n\t\tde las cámaras.\n");
 }
+
+
 

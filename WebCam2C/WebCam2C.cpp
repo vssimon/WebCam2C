@@ -2,7 +2,6 @@
 #include <locale.h>
 #include <vector>
 #include <io.h>
-#include "TwoCameras.h"
 #include "WebCam2C.h"
 
 // http://shailendra.me/tutorial/add-opencv-to-visual-studio-c++-project/
@@ -10,9 +9,12 @@
 int main(int argc, char *argv[])
 {
 	TwoCameras twocameras;
-	list<string> listaCam;
+	vector<TwoCameras::CamInfo> listaCam;
 	int cam1 = -1, cam2 = -1;
 	bool salir = false;
+	long width = 0;
+	long height = 0;
+	int FPS = 0;
 
 	setlocale(LC_ALL, "");
 
@@ -97,13 +99,12 @@ int main(int argc, char *argv[])
 	{
 		if (listaCam.size() >= 2)
 		{
-			vector<string> vectorCam(listaCam.begin(), listaCam.end());
 			do
 			{
-				int total = (int)vectorCam.size();
+				int total = (int)listaCam.size();
 				for (int i = 0; i < total; i++)
 				{
-					printf("\t %2d Cámara = '%s'\n", i, vectorCam[i].c_str());
+					printf("\t %2d Cámara = '%s'\n", i, listaCam[i].name.c_str());
 				}
 				printf("\t[ESC] Salir\n");
 				printf("\n");
@@ -131,9 +132,64 @@ int main(int argc, char *argv[])
 				}
 
 				printf("\tCamara Izquierda='%s'   Derecha='%s'\n",
-					cam1 < 0 ? "" : vectorCam[cam1].c_str(),
-					cam2 < 0 ? "" : vectorCam[cam2].c_str());
+					cam1 < 0 ? "" : listaCam[cam1].name.c_str(),
+					cam2 < 0 ? "" : listaCam[cam2].name.c_str());
+
+				if (cam1 >= 0)
+				{
+					MostrarResolucion(listaCam[cam1]);
+				}
+				if (cam2 >= 0)
+				{
+					MostrarResolucion(listaCam[cam2]);
+				}
 			} while ((cam1 < 0 || cam2 < 0 || cam1 == cam2) && !salir);
+
+			if (!salir)
+			{
+				// Muestra las opciones comunes y permite seleccionar una
+				vector<TwoCameras::CamValues> interseccion = InterseccionResolucion(listaCam[cam1], listaCam[cam2]);
+				if (interseccion.size() > 0)
+				{
+					do
+					{
+						int letra = 'a';
+						printf("\tResoluciones comunes para '%s' y '%s'\n", listaCam[cam1].name.c_str(), listaCam[cam2].name.c_str());
+						for (int i = 0; i < interseccion.size(); i++)
+						{
+							printf("\t\t%c .- '%-20s' - W=%5ld - H=%5ld - FPS=%3d - bitrate=%10u - bitcount=%3u\n", 
+								letra++,
+								interseccion[i].resolution.c_str(),
+								interseccion[i].width,
+								interseccion[i].height,
+								interseccion[i].FPS,
+								interseccion[i].bitrate,
+								interseccion[i].bitcount);
+						}
+
+						int opc = _getch();
+						if (opc == 27)
+						{
+							salir = true;
+						}
+						else
+						{
+							if (opc - 'a' >= 0 && opc - 'a' < interseccion.size())
+							{
+								int opcNum = opc - 'a';
+								width = interseccion[opcNum].width;
+								height = interseccion[opcNum].height;
+								FPS = interseccion[opcNum].FPS;
+							}
+						}
+					} while (!salir && !(width > 0 && height>0 && FPS>0));
+				}
+				else
+				{
+					printf("\tLas cámaras '%s' y '%s' no comparten resoluciones comunes\n", listaCam[cam1].name.c_str(), listaCam[cam2].name.c_str());
+					salir = true;
+				}
+			}
 		}
 		else
 		{
@@ -144,7 +200,7 @@ int main(int argc, char *argv[])
 		{
 			TwoCameras::showHelp();
 
-			twocameras.Init(cam1, cam2);
+			twocameras.Init(cam1, cam2, width, height, FPS);
 			twocameras.ShowImages();
 			twocameras.Release();
 		}
@@ -160,4 +216,47 @@ int main(int argc, char *argv[])
 	}
 }
 
+void MostrarResolucion(TwoCameras::CamInfo cam)
+{
+	printf("\tResoluciones para Camara='%s'\n", cam.name.c_str());
+	for (int i = 0; i < cam.values.size(); i++)
+	{
+		printf("\t\t'%-20s' - W=%5ld - H=%5ld - FPS=%3d - bitrate=%10u - bitcount=%3u\n",
+			cam.values[i].resolution.c_str(),
+			cam.values[i].width,
+			cam.values[i].height,
+			cam.values[i].FPS,
+			cam.values[i].bitrate,
+			cam.values[i].bitcount);
+	}
+};
 
+vector<TwoCameras::CamValues> InterseccionResolucion(TwoCameras::CamInfo cam1, TwoCameras::CamInfo cam2)
+{
+	vector<TwoCameras::CamValues> res;
+
+	for (int i = 0; i < cam1.values.size(); i++)
+	{
+		for (int j = 0; j < cam2.values.size(); j++)
+		{
+			if (cam1.values[i].width == cam2.values[j].width &&
+				cam1.values[i].height == cam2.values[j].height &&
+				cam1.values[i].FPS == cam2.values[j].FPS &&
+				cam1.values[i].bitcount == cam2.values[j].bitcount &&
+				cam1.values[i].bitrate == cam2.values[j].bitrate &&
+				cam1.values[i].resolution == cam2.values[j].resolution)
+			{
+				TwoCameras::CamValues element;
+				element.width = cam1.values[i].width;
+				element.height = cam1.values[i].height;
+				element.FPS = cam1.values[i].FPS;
+				element.bitcount = cam1.values[i].bitcount;
+				element.bitrate = cam1.values[i].bitrate;
+				element.resolution = cam1.values[i].resolution;
+				res.push_back(element);
+			}
+		}
+	}
+
+	return res;
+};
